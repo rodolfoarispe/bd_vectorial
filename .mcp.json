@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "bd-vectorial": {
+      "command": "/home/rodolfoarispe/vEnv/mem0/bin/python",
+      "args": ["/home/rodolfoarispe/bd_vectorial/mcp_server.py"]
+    }
+  }
+}

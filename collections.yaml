@@ -1,0 +1,56 @@
+# Configuración global
+# Nota: puedes complementar con collections.secrets.yaml (no versionar)
+ollama:
+  base_url: "http://localhost:11434"
+  embedding_model: "nomic-embed-text"
+  chat_model: "qwen2.5-coder:3b"
+
+chroma:
+  persist_directory: "./chroma_data"
+
+# Colecciones (una por cliente/proyecto)
+# Cada colección puede tener múltiples fuentes de datos
+collections:
+  # === PROYECTOS (base desde cero) ===
+  proyectos:
+    sources:
+      - name: documentacion
+        type: csv
+        path: "./data/proyectos_documentacion.csv"
+        # Enrichment desde BD (valores tipicos de dimensiones)
+        sql_enrich:
+          type: mssql
+          server: "192.168.0.14"
+          port: 1433
+          database: "analitica"
+          auth: credentials
+          # Credenciales en collections.secrets.yaml
+          user: "REPLACE_IN_SECRETS"
+          password: "REPLACE_IN_SECRETS"
+          max_values: 50
+          include_schema: true
+          max_columns: 200
+        vectorize:
+          - entidad
+          - tabla
+          - pk
+          - fk
+          - dimensiones
+          - campos_clave
+          - descripcion
+          - logica_negocio
+          - sql
+          - supuestos
+          - notas
+        metadata:
+          - id
+          - cliente
+          - proyecto
+          - entidad
+          - tabla
+          - modulo
+          - owner
+          - estado
+          - version
+          - fecha
+          - tags
