@@ -33,6 +33,83 @@ Tablas (NO DOCUMENTADAS - referencias informativas):
 
 ---
 
+## Servidores GECA
+
+### **Servidor de Desarrollo/Analítica** (Configuración actual)
+- **IP:** `192.168.0.14:1433`
+- **Base de datos:** `analitica` 
+- **Credenciales:** `sa / nvoThund3r25!`
+- **Acceso:** Directo desde red local
+- **Uso:** Desarrollo, análisis, sistema de BD vectorial
+
+### **Servidor de Producción GECA**
+- **IP Interna:** `192.168.1.11:1414`
+- **Credenciales:** `analitica / biuser20!`
+- **Base de datos:** `analitica`
+- **Acceso:** Túnel SSH + VPN
+
+#### **Proceso de conexión a Producción:**
+
+**MÉTODO AUTOMÁTICO (Recomendado):**
+```bash
+# Conectar (script pedirá contraseña interactivamente)
+./scripts/geca_prod.sh start
+
+# Usar
+/home/rodolfoarispe/vEnv/mem0/bin/python main.py -c proyectos_prod schema <tabla>
+
+# Desconectar (cierra túnel y VPN)
+./scripts/geca_prod.sh stop
+```
+
+**COMANDOS DISPONIBLES:**
+- `./scripts/geca_prod.sh start` - Conectar todo
+- `./scripts/geca_prod.sh stop` - Desconectar todo
+- `./scripts/geca_prod.sh status` - Ver estado
+- `./scripts/geca_prod.sh force-stop` - Forzar cierre
+- `./scripts/geca_prod.sh test` - Probar BD
+
+**MÉTODO MANUAL (Solo si script falla):**
+```bash
+# Activar VPN + túnel
+sshpass -p "Bichito21$" ssh rodolfoarispe@192.168.0.229 "scutil --nc start 'VPN'"
+sshpass -p "Bichito21$" ssh -L 1414:192.168.1.11:1414 rodolfoarispe@192.168.0.229 -N &
+
+# Desconectar
+pkill -f "ssh.*1414.*192.168.0.229"
+sshpass -p "Bichito21$" ssh rodolfoarispe@192.168.0.229 "scutil --nc stop 'VPN'"
+```
+
+**Credenciales BD:**
+- Servidor: `localhost:1414`
+- Usuario: `analitica`
+- Password: `biuser20!`
+
+#### **🤖 PROTOCOLO PARA ASISTENTE:**
+Cuando el usuario necesite acceso a producción:
+
+1. **NUNCA ejecutar el script automáticamente**
+2. **Recordar al usuario:** "Debes ejecutar manualmente: `./scripts/geca_prod.sh start`"
+3. **El script pedirá la contraseña SSH interactivamente**
+4. **Una vez conectado, puedes usar:** `-c proyectos_prod` para consultas
+5. **Recordar al usuario desconectar:** `./scripts/geca_prod.sh stop`
+
+#### **⚠️ REGLAS CRÍTICAS PARA PRODUCCIÓN:**
+1. **NUNCA ejecutar sin confirmación explícita del usuario**
+2. **SIEMPRE preguntar antes de cualquier operación**  
+3. **SOLO consultas SELECT salvo indicación contraria**
+4. **El script de conexión debe ejecutarse MANUALMENTE por el usuario**
+5. **Recordar al usuario que debe ejecutar: `./scripts/geca_prod.sh start`**
+6. **Limitar resultados** para evitar sobrecarga del servidor
+
+#### **Tablas verificadas en Producción:**
+- ✅ `temp_accounting_charges` / `temp_accounting_master` (Magaya)
+- ✅ `temp_shipment_master` / `temp_shipment_charges` / `temp_shipment_items` (Magaya)
+- ✅ `temp_sage_chart` / `temp_sage_*` (Sage/Peachtree) 
+- ✅ Tablas adicionales: `temp_quotes_*`, `temp_payments_*`, `temp_cargo_release_*`
+
+---
+
 ## Orden Jerárquico de Búsqueda
 
 Usa esta jerarquía para obtener información sin ir innecesariamente a la BD:
@@ -146,6 +223,9 @@ Cuando modifiques el CSV (añadas nuevas tablas), simplemente reindexea y el cac
 2. **Nunca uses tablas no documentadas** → Verifica que aparezcan en `main.py schema <tabla>`
 3. **Para rangos de fechas** → Usa sintaxis cerrado-abierto: `>= '2025-01-01' AND < '2025-01-31'`
 4. **Si un campo no aparece en el esquema** → No lo uses. Pregunta o busca en el contexto.
+5. **Para servidor de producción** → NUNCA ejecutar sin confirmación explícita del usuario
+6. **Verificar túnel SSH** → `ssh -L 1414:192.168.1.11:1414 rodolfoarispe@192.168.0.229`
+7. **VPN prerequisito** → Activar VPN en 192.168.0.229 antes del túnel
 
 ---
 
@@ -170,3 +250,45 @@ Cuando modifiques el CSV (añadas nuevas tablas), simplemente reindexea y el cac
 ### Otros
 - **GUIA.md** → Cómo funciona el sistema de búsqueda vectorial y enriquecimiento
 - **collections.yaml** → Configuración de colecciones, fuentes, credenciales, sql_enrich
+
+---
+
+## Archivos de Referencia del Sistema
+
+### **GUIA.md** - Documentación Técnica Completa
+- **Qué es:** Guía técnica del sistema de BD vectorial con ChromaDB y Ollama
+- **Contenido:** Arquitectura, comandos, configuración, requisitos, troubleshooting
+- **Cuándo consultar:** Para entender la arquitectura técnica, comandos específicos, o resolver problemas
+- **Ubicación:** `/home/rodolfoarispe/bd_vectorial/GUIA.md`
+
+### **collections.yaml** - Configuración Principal
+- **Qué es:** Archivo de configuración que define colecciones, fuentes y conexiones
+- **Contenido:** 
+  - Configuración de Ollama (embedding + chat models)
+  - Configuración de ChromaDB
+  - Definición de colecciones (proyectos)
+  - Fuentes de datos (documentacion + documentacion_prod)
+  - Configuración sql_enrich para desarrollo y producción
+- **Cuándo consultar:** Para verificar configuración actual o agregar nuevas fuentes
+- **Ubicación:** `/home/rodolfoarispe/bd_vectorial/collections.yaml`
+
+### **collections.secrets.yaml** - Credenciales Sensibles
+- **Qué es:** Archivo con credenciales de bases de datos (no versionado)
+- **Contenido:**
+  - Credenciales desarrollo: `sa / nvoThund3r25!`
+  - Credenciales producción: `analitica / biuser20!`
+- **Ubicación:** `/home/rodolfoarispe/bd_vectorial/collections.secrets.yaml`
+- **Seguridad:** Permisos restringidos (`chmod 600`)
+
+### **Contexto Completo en Nueva Sesión**
+Para obtener contexto completo del sistema en una nueva sesión, usar:
+```
+usa @AGENTS.md como contexto
+```
+
+Esto proporciona automáticamente acceso a:
+- ✅ Flujo de trabajo híbrido (esquemas → contexto → SQL)
+- ✅ Configuración de servidores GECA (desarrollo + producción)
+- ✅ Reglas de seguridad y mejores prácticas
+- ✅ Comandos y herramientas disponibles
+- ✅ Referencias a GUIA.md y collections.yaml para detalles técnicos

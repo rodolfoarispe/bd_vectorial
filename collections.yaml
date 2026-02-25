@@ -54,3 +54,45 @@ collections:
           - version
           - fecha
           - tags
+
+      # Fuente para servidor de producción GECA (via túnel SSH)
+      - name: documentacion_prod
+        type: csv
+        path: "./data/proyectos_documentacion.csv"
+        # Enrichment desde BD Producción (localhost:1414 via túnel SSH)
+        sql_enrich:
+          type: mssql
+          server: "localhost"
+          port: 1414
+          database: "analitica"
+          auth: credentials
+          # Credenciales en collections.secrets.yaml
+          user: "REPLACE_IN_SECRETS"
+          password: "REPLACE_IN_SECRETS"
+          max_values: 50
+          include_schema: true
+          max_columns: 200
+        vectorize:
+          - entidad
+          - tabla
+          - pk
+          - fk
+          - dimensiones
+          - campos_clave
+          - descripcion
+          - logica_negocio
+          - sql
+          - supuestos
+          - notas
+        metadata:
+          - id
+          - cliente
+          - proyecto
+          - entidad
+          - tabla
+          - modulo
+          - owner
+          - estado
+          - version
+          - fecha
+          - tags

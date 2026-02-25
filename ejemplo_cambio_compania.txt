@@ -1,0 +1,104 @@
+EJEMPLO: Cómo quedarían los registros CON el campo compañía
+============================================================
+
+📋 CASO: Job "GCPAE20-0495CFZ" que existe en 3 compañías
+
+🔸 ESTADO ACTUAL (Vista vi_sage_job_agregado):
+┌──────────────────────────────────────────────────────────────┐
+│ JobID: GCPAE20-0495CFZ                                       │
+│ Descripción: (varía según compañía)                         │
+│ Ingresos: $39,538.00  ← SUMA DE LAS 3 COMPAÑÍAS             │
+│ Gastos: $15,685.70    ← SUMA DE LAS 3 COMPAÑÍAS             │
+│ Utilidad: $23,852.30  ← SUMA DE LAS 3 COMPAÑÍAS             │
+│ Facturas: 4 emitidas  ← SUMA DE LAS 3 COMPAÑÍAS             │
+│                                                              │
+│ ⚠️  PROBLEMA: ¿De qué compañía viene cada monto?            │
+│     El usuario NO puede saberlo                             │
+└──────────────────────────────────────────────────────────────┘
+
+🔹 ESTADO PROPUESTO (Vista vi_sage_job_agregado CON compañía):
+
+Registro 1:
+┌──────────────────────────────────────────────────────────────┐
+│ Compañía: GENERAL CARGO PANAMA, S.A.                        │
+│ JobID: GCPAE20-0495CFZ                                       │
+│ Descripción: ZICO EXPORT, S.A.                              │
+│ Ingresos: $1,975.00     ← SOLO DE ESTA COMPAÑÍA             │
+│ Gastos: $1,061.70       ← SOLO DE ESTA COMPAÑÍA             │
+│ Utilidad: $913.30       ← SOLO DE ESTA COMPAÑÍA             │
+│ Facturas: 2 emitidas    ← SOLO DE ESTA COMPAÑÍA             │
+│ ✅ El usuario sabe que viene de GC Panamá                    │
+└──────────────────────────────────────────────────────────────┘
+
+Registro 2:
+┌──────────────────────────────────────────────────────────────┐
+│ Compañía: GENERAL CARGO, S.A.                               │
+│ JobID: GCPAE20-0495CFZ                                       │
+│ Descripción: JANSSEN AIR & OCEAN                            │
+│ Ingresos: $37,563.00    ← SOLO DE ESTA COMPAÑÍA             │
+│ Gastos: $14,624.00      ← SOLO DE ESTA COMPAÑÍA             │
+│ Utilidad: $22,939.00    ← SOLO DE ESTA COMPAÑÍA             │
+│ Facturas: 2 emitidas    ← SOLO DE ESTA COMPAÑÍA             │
+│ ✅ El usuario sabe que viene de GC Costa Rica                │
+└──────────────────────────────────────────────────────────────┘
+
+Registro 3:
+┌──────────────────────────────────────────────────────────────┐
+│ Compañía: WORLD ASIA LATINOAMERICA INC.                     │
+│ JobID: GCPAE20-0495CFZ                                       │
+│ Descripción: ZICO EXPORT, S.A.                              │
+│ Ingresos: $0.00         ← SOLO DE ESTA COMPAÑÍA             │
+│ Gastos: $0.00           ← SOLO DE ESTA COMPAÑÍA             │
+│ Utilidad: $0.00         ← SOLO DE ESTA COMPAÑÍA             │
+│ Facturas: 0 emitidas    ← SOLO DE ESTA COMPAÑÍA             │
+│ ✅ El usuario sabe que viene de World Asia                   │
+│ (Sin actividad financiera en este job)                      │
+└──────────────────────────────────────────────────────────────┘
+
+📊 TOTALES CONSOLIDADOS (si el usuario los necesita):
+┌──────────────────────────────────────────────────────────────┐
+│ Suma de todas las compañías:                                 │
+│ Ingresos totales: $39,538.00                                 │
+│ Gastos totales: $15,685.70                                   │
+│ Utilidad total: $23,852.30                                   │
+│ ✅ Mismos números, pero CON TRAZABILIDAD                     │
+└──────────────────────────────────────────────────────────────┘
+
+🎯 BENEFICIOS DEL CAMBIO:
+
+1. TRAZABILIDAD:
+   - El usuario sabe exactamente de qué compañía viene cada transacción
+   - Puede filtrar por compañía específica
+   - Puede analizar performance por compañía
+
+2. PRECISIÓN:
+   - No hay datos mezclados incorrectamente
+   - Cada registro refleja la realidad de UNA compañía
+   - Los márgenes y KPIs son precisos por compañía
+
+3. FLEXIBILIDAD:
+   - Puede ver datos por compañía individual
+   - Puede hacer SUM() para consolidar cuando lo necesite
+   - Puede comparar performance entre compañías
+
+4. CASOS DE USO MEJORADOS:
+   - "¿Cuál compañía es más rentable?"
+   - "¿Qué jobs tiene pendientes GC Panamá?"
+   - "Facturación de World Asia el mes pasado"
+   - Auditorías por compañía separadas
+
+🎯 ESTRUCTURA DE LA NUEVA VISTA:
+
+Campos añadidos:
+- Company_Name (varchar): Nombre completo de la compañía
+- Company_DBN (varchar): Identificador de BD de la compañía
+
+Clave de agrupación cambia de:
+  GROUP BY jobid, jobdescription, ...
+A:
+  GROUP BY Company_Name, Company_DBN, jobid, jobdescription, ...
+
+Resultado:
+- En lugar de 35,548 jobs únicos
+- Tendríamos ~70,000-80,000 registros (jobs × compañías)
+- Pero con información PRECISA y TRAZABLE
