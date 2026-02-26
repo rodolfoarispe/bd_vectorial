@@ -1,0 +1,236 @@
+# PROTOCOLO_CONSULTAS.yaml
+# Definición formal del flujo que debe seguir el asistente IA
+
+version: "1.0"
+proposito: "Guiar al asistente IA en el orden correcto de acciones para cualquier tarea"
+
+protocolos:
+  
+  consulta_sql:
+    nombre: "Ejecutar Consulta SQL contra BD"
+    duracion_estimada: "5-10 minutos"
+    fases:
+      
+      fase_1_descubrimiento:
+        nombre: "Leer Documentación"
+        duracion: "2 minutos"
+        pasos:
+          - paso: 1
+            accion: "Leer CLAUDE.md"
+            lineas: "1-20"
+            razon: "Índice maestro - identifica qué documento especializado leer"
+            validacion: "¿Identifiqué qué tipo de tarea es?"
+          
+          - paso: 2
+            accion: "Leer documento especializado"
+            decision: 
+              "¿Es sobre conexión a producción?": 
+                archivo: "CONEXION_PRODUCCION.md"
+                razon: "Aprenderé script de conexión y verificación"
+              "¿Es consulta SQL general?":
+                archivo: "AGENTS.md"
+                seccion: "Paso 3: Ejecutar SQL"
+                razon: "Aprenderé comandos disponibles"
+              "¿Es sobre tablas Sage/Peachtree?":
+                archivo: "data/sage_schema_notes.md"
+                razon: "Aprenderé estructura de tablas Sage"
+              "¿Es sobre tablas Magaya?":
+                archivo: "data/proyectos_documentacion.csv"
+                razon: "Aprenderé contexto de negocio"
+            validacion: "¿Leí el archivo especializado completo?"
+
+      fase_2_validacion:
+        nombre: "Verificar Prerequisitos"
+        duracion: "2 minutos"
+        pasos:
+          - paso: 1
+            accion: "Identificar ambiente"
+            opciones:
+              - "Desarrollo (192.168.0.14:1433) → usar: -c proyectos"
+              - "Producción (192.168.1.11:1414) → usar: -c proyectos_prod"
+            validacion: "¿Está claro el ambiente?"
+          
+          - paso: 2
+            accion: "Si es PRODUCCIÓN, validar conexión"
+            condicional: "ambiente == produccion"
+            comandos:
+              - "/home/rodolfoarispe/bd_vectorial/scripts/geca_prod.sh status"
+            validacion: "¿Muestra conexión OK?"
+            sino: "Recordar usuario ejecutar start, esperar"
+          
+          - paso: 3
+            accion: "Identificar tabla/vista necesaria"
+            comando: "/home/rodolfoarispe/vEnv/mem0/bin/python main.py schema <tabla>"
+            razon: "Obtener esquema exacto sin asumir"
+            validacion: "¿Existen todos los campos que necesito?"
+          
+          - paso: 4
+            accion: "Si necesito contexto, buscar semánticamente"
+            comando: "/home/rodolfoarispe/vEnv/mem0/bin/python main.py search \"<tema>\""
+            razon: "Entender relaciones y reglas de negocio"
+            validacion: "¿Entiendo las relaciones?"
+            opcional: true
+          
+          - paso: 5
+            accion: "Verificar comando SQL correcto"
+            opciones:
+              - comando: "main.py -c proyectos_prod sql"
+                cuando: "Para cualquier ambiente"
+                recomendado: true
+              - comando: "query_prod.py"
+                cuando: "Alternativa para producción"
+            validacion: "¿Sé qué comando usar?"
+
+      fase_3_construccion:
+        nombre: "Construir SQL"
+        duracion: "1 minuto"
+        pasos:
+          - paso: 1
+            accion: "Usar SOLO campos verificados"
+            fuente: "De main.py schema (fase 2, paso 3)"
+            validacion: "¿Todos los campos existen en esquema?"
+          
+          - paso: 2
+            accion: "Respetar relaciones documentadas"
+            fuente: "De main.py search (fase 2, paso 4)"
+            validacion: "¿Usé relaciones correctas?"
+          
+          - paso: 3
+            accion: "Aplicar reglas de fechas"
+            regla: "Cerrado-abierto: >= inicio AND < fin"
+            ejemplo: ">= '2025-01-01' AND < '2025-02-01'"
+            validacion: "¿Fechas con formato correcto?"
+          
+          - paso: 4
+            accion: "Validar sintaxis SQL"
+            checks:
+              - "¿Es SELECT? (no INSERT/UPDATE/DELETE)"
+              - "¿Sintaxis SQL válida?"
+              - "¿Donde/Order By correctos?"
+            validacion: "¿Pasó todos los checks?"
+
+      fase_4_ejecucion:
+        nombre: "Ejecutar SQL"
+        duracion: "1 minuto"
+        pasos:
+          - paso: 1
+            accion: "Ejecutar comando"
+            templates:
+              - ambiente: "desarrollo"
+                comando: "/home/rodolfoarispe/vEnv/mem0/bin/python main.py -c proyectos sql \"SELECT ...\""
+              - ambiente: "produccion"
+                comando: "/home/rodolfoarispe/vEnv/mem0/bin/python main.py -c proyectos_prod sql \"SELECT ...\""
+                alternativa: "/home/rodolfoarispe/vEnv/mem0/bin/python query_prod.py \"SELECT ...\" --limit 100"
+            validacion: "¿Comando ejecutó sin error?"
+          
+          - paso: 2
+            accion: "Reportar resultados"
+            debe_incluir:
+              - "Número de filas devueltas"
+              - "Datos relevantes"
+              - "Si se alcanzó límite (100 por defecto)"
+            validacion: "¿Usuario entiende los resultados?"
+
+  busqueda_semantica:
+    nombre: "Búsqueda Semántica de Contexto"
+    duracion_estimada: "2-3 minutos"
+    fases:
+      fase_1_descubrimiento:
+        pasos:
+          - accion: "Leer AGENTS.md"
+            seccion: "Paso 1: Buscar contexto"
+      fase_2_ejecucion:
+        pasos:
+          - accion: "Ejecutar búsqueda"
+            comando: "main.py search \"<pregunta>\""
+            ejemplo: "search \"como se relacionan cargos con embarques\""
+      fase_3_reporte:
+        pasos:
+          - accion: "Reportar conceptos y relaciones encontradas"
+
+  entender_tabla:
+    nombre: "Entender Esquema de una Tabla"
+    duracion_estimada: "1 minuto"
+    fases:
+      fase_1_lectura:
+        pasos:
+          - accion: "Leer AGENTS.md"
+            seccion: "Paso 2: Consultar esquemas exactos"
+      fase_2_ejecucion:
+        pasos:
+          - accion: "Obtener esquema"
+            comando: "main.py schema <tabla>"
+            validacion: "¿Tabla existe?"
+      fase_3_reporte:
+        pasos:
+          - accion: "Listar columnas y tipos"
+          - accion: "Si tabla no existe, listar tablas disponibles"
+
+reglas_criticales:
+  - id: 1
+    regla: "LEER DOCUMENTACIÓN PRIMERO"
+    cuando: "Antes de ejecutar cualquier comando"
+    como: "Seguir orden en CLAUDE.md → documento especializado"
+    consequencia_violarla: "Errores, comandos equivocados, frustración del usuario"
+  
+  - id: 2
+    regla: "NUNCA ASUMIR NOMBRES DE CAMPOS"
+    cuando: "Construcción de SQL"
+    como: "Siempre ejecutar main.py schema <tabla>"
+    consequencia_violarla: "Queries fallidas, información incorrecta"
+  
+  - id: 3
+    regla: "PRODUCCIÓN REQUIERE CONFIRMACIÓN"
+    cuando: "Cambios o accesos a producción"
+    como: "Pedir confirmación explícita del usuario antes de cualquier acción"
+    consequencia_violarla: "Riesgo de modificar datos de producción"
+  
+  - id: 4
+    regla: "VALIDAR CONEXIÓN ANTES DE CONSULTAR"
+    cuando: "Acceso a producción"
+    como: "Ejecutar ./scripts/geca_prod.sh status"
+    consequencia_violarla: "Queries colgadas, timeouts"
+  
+  - id: 5
+    regla: "SOLO SELECT EN QUERIES AUTOMÁTICAS"
+    cuando: "Ejecutar SQL de forma automática"
+    como: "Validar que sea SELECT, nunca INSERT/UPDATE/DELETE"
+    consequencia_violarla: "Pérdida de datos, cambios inadecuados"
+
+errores_comunes:
+  - error: "Comando no encontrado o inválido"
+    causa_raiz: "No leí documentación de comandos disponibles"
+    prevencion: "Fase 1 Paso 2: Leer AGENTS.md Paso 3"
+    solucion: "Leer AGENTS.md nuevamente"
+  
+  - error: "Tabla/Vista no existe"
+    causa_raiz: "Asumí nombre sin verificar"
+    prevencion: "Fase 2 Paso 3: main.py schema"
+    solucion: "Listar tablas disponibles con main.py schema"
+  
+  - error: "Columna no existe"
+    causa_raiz: "No consulté esquema antes de escribir SQL"
+    prevencion: "Fase 2 Paso 3: main.py schema completo"
+    solucion: "Rehacer SQL usando columnas del esquema"
+  
+  - error: "Conexión colgada/timeout"
+    causa_raiz: "Túnel SSH no activo o BD no responde"
+    prevencion: "Fase 2 Paso 2: ./scripts/geca_prod.sh status"
+    solucion: "Usuario ejecuta ./scripts/geca_prod.sh start nuevamente"
+  
+  - error: "Múltiples intentos fallidos"
+    causa_raiz: "No seguí protocolo completo paso a paso"
+    prevencion: "Usar este archivo como checklist antes de cada acción"
+    solucion: "Volver a Fase 1 y seguir TODO el protocolo"
+
+checklist_antes_de_ejecutar_sql:
+  - "¿Leí CLAUDE.md índice?"
+  - "¿Leí documento especializado (CONEXION_PRODUCCION.md o AGENTS.md)?"
+  - "¿Identifiqué ambiente (desarrollo/producción)?"
+  - "¿Si es producción, validé conexión con status?"
+  - "¿Ejecuté main.py schema <tabla>?"
+  - "¿Usé SOLO campos del esquema?"
+  - "¿Respeto relaciones documentadas?"
+  - "¿Es SELECT (no INSERT/UPDATE/DELETE)?"
+  - "¿Sintaxis SQL válida?"
+  - "¿Listo para ejecutar? ✓"

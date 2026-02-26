@@ -110,6 +110,19 @@ Cuando el usuario necesite acceso a producción:
 
 ---
 
+## ⚠️ LEER PRIMERO: Protocolo para Asistente IA
+
+Antes de ejecutar cualquier comando, el asistente DEBE leer en este orden:
+
+1. **CLAUDE.md** (2 min) - Índice maestro
+2. **ASISTENTE_CHECKLIST.md** (3 min) - Checklist paso a paso  
+3. **PROTOCOLO_CONSULTAS.yaml** (ref rápida) - Definición formal del protocolo
+4. El documento especializado según la tarea (CONEXION_PRODUCCION.md, etc.)
+
+Esto asegura que NO cometeré errores de orden de ejecución.
+
+---
+
 ## Orden Jerárquico de Búsqueda
 
 Usa esta jerarquía para obtener información sin ir innecesariamente a la BD:
@@ -173,18 +186,34 @@ Cuando necesites columnas, tipos de datos o validar que un campo existe, usa bú
 
 **Regla de oro:** NUNCA asumas un nombre de campo. Siempre consulta el esquema primero.
 
-### Paso 3: Construir y ejecutar SQL
+### Paso 3: Ejecutar SQL
 
-Con la información de los pasos 1 y 2, construye la consulta SQL:
+Con la información de los pasos 1 y 2, construye y ejecuta la consulta SQL usando **los comandos disponibles**:
+
+#### **Opción A: Comando SQL directo en main.py** ⭐
+```bash
+/home/rodolfoarispe/vEnv/mem0/bin/python main.py -c proyectos_prod sql "SELECT * FROM temp_sage_chart LIMIT 10"
+```
+
+#### **Opción B: Script específico para producción** ⭐
+```bash
+/home/rodolfoarispe/vEnv/mem0/bin/python query_prod.py "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='VIEW'"
+```
+
+#### **Reglas importantes:**
 - Usa los campos exactos del esquema (paso 2)
-- Respeta las relaciones documentadas (paso 1)
+- Respeta las relaciones documentadas (paso 1)  
 - Para rangos de fechas: cerrado-abierto (`>= inicio AND < fin`)
+- Límite por defecto: 100 filas (usar `--limit N` para cambiar)
 
-Ejecuta contra la BD usando la conexión `sql_enrich` configurada en `collections.yaml`.
+#### **Ejemplos prácticos:**
+```bash
+# Buscar vistas con 'sage' en el nombre
+main.py -c proyectos_prod sql "SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='VIEW' AND LOWER(TABLE_NAME) LIKE '%sage%'"
 
-Devuelve:
-- El SQL exacto que ejecutaste
-- Los resultados obtenidos
+# Consulta con límite específico
+query_prod.py "SELECT * FROM temp_shipment_master" --limit 50
+```
 
 ---
 
@@ -219,13 +248,19 @@ Cuando modifiques el CSV (añadas nuevas tablas), simplemente reindexea y el cac
 
 ## Reglas Obligatorias
 
-1. **Nunca asumas nombres de campos** → Siempre consulta `main.py schema <tabla>`
-2. **Nunca uses tablas no documentadas** → Verifica que aparezcan en `main.py schema <tabla>`
+### **Flujo de Trabajo Correcto:**
+1. **Esquemas primero** → `main.py schema <tabla>` para obtener campos exactos
+2. **Contexto después** → `main.py search "<pregunta>"` para entender relaciones  
+3. **SQL al final** → `main.py -c proyectos_prod sql "<consulta>"` o `query_prod.py "<consulta>"`
+
+### **Reglas Críticas:**
+1. **Nunca asumas nombres de campos** → Siempre consulta el esquema primero
+2. **Nunca uses tablas no documentadas** → Verifica que aparezcan en el esquema
 3. **Para rangos de fechas** → Usa sintaxis cerrado-abierto: `>= '2025-01-01' AND < '2025-01-31'`
-4. **Si un campo no aparece en el esquema** → No lo uses. Pregunta o busca en el contexto.
-5. **Para servidor de producción** → NUNCA ejecutar sin confirmación explícita del usuario
-6. **Verificar túnel SSH** → `ssh -L 1414:192.168.1.11:1414 rodolfoarispe@192.168.0.229`
-7. **VPN prerequisito** → Activar VPN en 192.168.0.229 antes del túnel
+4. **Para servidor de producción** → NUNCA ejecutar sin confirmación explícita del usuario
+5. **Comandos SQL disponibles:**
+   - `main.py -c proyectos_prod sql "<query>"` 
+   - `query_prod.py "<query>" --limit N`
 
 ---
 

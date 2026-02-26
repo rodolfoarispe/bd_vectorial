@@ -250,6 +250,61 @@ def cmd_chat(collection_name):
             print("\n")
 
 
+def cmd_sql(collection_name, query, limit=None):
+    """Ejecutar consulta SQL directo contra la BD del collection."""
+    from config import get_collection_config
+    from db_connector import execute_query
+    
+    cfg = get_collection_config(collection_name)
+    
+    # Buscar una fuente con sql_enrich para ejecutar
+    sql_source = None
+    for source in cfg["sources"]:
+        if "sql_enrich" in source:
+            sql_source = source["sql_enrich"]
+            break
+    
+    if not sql_source:
+        print(f"Error: La colección '{collection_name}' no tiene configuración SQL")
+        sys.exit(1)
+    
+    # Cargar credenciales
+    import yaml
+    import os
+    secrets_path = os.path.join(os.path.dirname(__file__), "collections.secrets.yaml")
+    
+    if os.path.exists(secrets_path):
+        with open(secrets_path, 'r') as f:
+            secrets = yaml.safe_load(f)
+        
+        # Buscar credenciales para esta colección
+        col_secrets = secrets.get('collections', {}).get(collection_name, {})
+        if col_secrets:
+            for source_secret in col_secrets.get('sources', []):
+                if 'sql_enrich' in source_secret:
+                    sql_source['user'] = source_secret['sql_enrich']['user']
+                    sql_source['password'] = source_secret['sql_enrich']['password']
+                    break
+    
+    try:
+        max_rows = limit if limit else 100
+        df = execute_query(sql_source, query, max_rows=max_rows)
+        
+        if len(df) == 0:
+            print("0 filas devueltas")
+        else:
+            print(f"\n=== RESULTADOS ({len(df)} filas) ===\n")
+            # Mostrar resultados con formato tabla
+            print(df.to_string(index=False))
+            
+            if len(df) == max_rows:
+                print(f"\n⚠️  Resultados limitados a {max_rows} filas. Usa --limit para cambiar.")
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+
 def cmd_schema(table_name):
     """Buscar esquema literal de una tabla (sin embeddings, búsqueda directa)."""
     import json
@@ -375,6 +430,10 @@ def main():
     ask_parser.add_argument("-n", "--n-results", type=int, default=5, help="Resultados de contexto")
     ask_parser.add_argument("-f", "--filter", action="append", help="Filtro campo=valor (repetible)")
 
+    sql_parser = subparsers.add_parser("sql", help="Ejecutar consulta SQL directo")
+    sql_parser.add_argument("query", help="Consulta SQL")
+    sql_parser.add_argument("--limit", type=int, help="Límite de filas (default: 100)")
+
     schema_parser = subparsers.add_parser("schema", help="Consultar esquema de tabla (búsqueda literal)")
     schema_parser.add_argument("table", help="Nombre de la tabla")
 
@@ -394,7 +453,7 @@ def main():
     elif args.command == "schema":
         cmd_schema(args.table)
 
-    elif args.command in ("index", "search", "ask", "chat", "stats", "interactive"):
+    elif args.command in ("index", "search", "ask", "sql", "chat", "stats", "interactive"):
         if not args.collection:
             print("Error: Debes especificar una colección con -c/--collection")
             sys.exit(1)
@@ -431,6 +490,13 @@ def main():
                 query=args.query,
                 n_results=args.n_results,
                 filters=filters if filters else None
+            )
+
+        elif args.command == "sql":
+            cmd_sql(
+                args.collection,
+                query=args.query,
+                limit=args.limit
             )
 
         elif args.command == "chat":
