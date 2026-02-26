@@ -1,12 +1,13 @@
 # Conexión a GECA Producción
 
-## ⚠️ ESTADO ACTUAL: VPN NO FUNCIONA
+## ✅ ESTADO ACTUAL: VPN FUNCIONA
 
-**Problema identificado:** El script no puede levantar la VPN en la Mac.
+**Solución encontrada:** Usar `networksetup` en lugar de `scutil`.
 
-**Causa probable:** El usuario `rodolfoarispe` NO tiene permisos de administrador para ejecutar `scutil --nc start` en la Mac.
+- `scutil --nc start` requiere acceso al Keychain (falla con "falta secreto compartido IPSec")
+- `networksetup -connectpppoeservice` accede al Keychain correctamente ✅
 
-**Requerimiento:** Necesitas un usuario CON permisos de administrador en la Mac `192.168.0.229` para poder levantar la VPN.
+**Cambio:** Script actualizado para usar `networksetup`.
 
 ---
 
@@ -26,53 +27,48 @@
 
 ## Requisitos Previos - Configuración en la Mac
 
-### Problema: Usuario sin permisos de administrador
+### ✅ Verificado: Funciona con `networksetup`
 
-Para que el script pueda activar la VPN, el usuario en la Mac DEBE tener permisos de administrador.
+El script usa `networksetup` que accede correctamente al Keychain de la Mac.
 
-**¿Cómo verificar en la Mac?**
-
+**Verificación rápida:**
 ```bash
-# Ejecutar en terminal de la Mac:
-sudo scutil --nc list
+# En terminal de la Mac:
+networksetup -connectpppoeservice "VPN"
 
-# Si pide contraseña y la acepta → TIENE permisos ✓
-# Si dice "Operation not permitted" → NO TIENE permisos ✗
+# Si conecta sin error → OK ✓
+# Si da error de IPSec → Ver abajo
 ```
 
-**¿Cómo arreglarlo en la Mac?**
+### Si el error persiste: Verificar VPN en GUI
 
-```bash
-# Opción 1: Agregar usuario a grupo admin
-sudo dseditgroup -o edit -a rodolfoarispe -t user admin
+Si `networksetup` falla con error de IPSec:
 
-# Opción 2: Permitir sudoers sin contraseña (menos seguro)
-sudo visudo
-# Agregar línea: rodolfoarispe ALL=(ALL) NOPASSWD: /usr/bin/scutil
-```
+1. Abre **Sistema → Red → VPN**
+2. Click en **Editar** (Edit)
+3. Verifica:
+   - ¿Server está configurado?
+   - ¿Account está configurado?
+   - ¿El Keychain tiene guardada la credencial?
+4. Intenta conectar desde GUI (click en VPN desde barra)
 
-**Alternativa: Ejecutar manualmente en la Mac**
-
-Si no puedes cambiar permisos, usa este script directamente en la Mac:
-
-```bash
-# En la Mac (192.168.0.229):
-sudo scutil --nc start "VPN"
-sudo scutil --nc status "VPN"
-
-# Verificar
-sudo scutil --nc list  # Debe mostrar "VPN" en estado "Connected"
-```
+Si GUI funciona pero línea de comandos falla, el problema es del Keychain. 
+Solución: Elimina y reconfigura la VPN (Sistema → Red → VPN, botón "-", luego "+")
 
 ---
 
 ## Proceso de Conexión
 
-### Automático (Recomendado) - REQUIERE permisos en la Mac
+### Automático (Recomendado) ✅
 ```bash
 # Activar VPN + establecer túnel (pedirá contraseña interactivamente)
 ./scripts/geca_prod.sh start
 # Contraseña SSH: Bichito21$
+
+# Script levanta:
+# 1. VPN en la Mac usando networksetup ✅
+# 2. Túnel SSH a 192.168.1.11:1414 ✅
+# 3. Disponible en: localhost:1414
 
 # Usar BD vectorial con producción
 /home/rodolfoarispe/vEnv/mem0/bin/python main.py -c proyectos_prod schema <tabla>

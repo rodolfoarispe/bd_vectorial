@@ -1,12 +1,20 @@
 # Diagnóstico: Por qué la VPN no se levanta
 
-## El Problema
+## ✅ SOLUCIÓN ENCONTRADA
 
-El script `geca_prod.sh start` falla al intentar activar la VPN en la Mac `192.168.0.229`.
+**Problema:** `scutil --nc start` fallaba con "falta secreto compartido IPSec"
 
-## Causas Posibles
+**Solución:** Usar `networksetup -connectpppoeservice "VPN"` en lugar de `scutil`
 
-### Causa 1: Usuario sin permisos de administrador (MÁS PROBABLE)
+**Razón:** `scutil` necesita acceso al Keychain que no estaba disponible. `networksetup` accede correctamente al Keychain.
+
+**Script actualizado:** Ya incluye la solución.
+
+---
+
+## Causas Posibles (Histórico)
+
+### Causa 1: Usuario sin permisos de administrador (DESCARTADA)
 
 **Síntoma:** El comando `scutil --nc start` falla silenciosamente sin error
 

@@ -42,19 +42,12 @@ Este documento define el orden EXACTO que debe seguir el asistente antes de ejec
   - [ ] ¿Colección a usar? `-c proyectos` o `-c proyectos_prod`
 
 - [ ] **Paso 2.2:** Si es PRODUCCIÓN, verifico conexión (3 validaciones)
-  - [ ] **Validación 2.2a: VPN activa en la Mac** (⚠️ Problema conocido)
-    - [ ] Ejecuto: `ssh rodolfoarispe@192.168.0.229 "scutil --nc status 'VPN'"`
-    - [ ] ¿Muestra "Connected"? → Continuar
-    - [ ] ¿Muestra error? → **PARAR AQUÍ** - La VPN NO funciona
-      
-      **PROBLEMA IDENTIFICADO:** El usuario `rodolfoarispe` en la Mac NO tiene permisos de administrador para ejecutar `scutil --nc start`.
-      
-      **Esto está FUERA del control del asistente.** Requiere:
-      1. Acceso de administrador en la Mac `192.168.0.229`
-      2. Ejecutar: `sudo dseditgroup -o edit -a rodolfoarispe -t user admin`
-      3. O permitir sudoers: `sudo visudo` + agregar excepción para scutil
-      
-      **Ver:** DIAGNOSTICO_VPN.md para verificar la causa exacta
+  - [ ] **Validación 2.2a: VPN activa en la Mac** ✅ (RESUELTO)
+    - [ ] Ejecuto: `./scripts/geca_prod.sh start` (ya incluye levantamiento de VPN)
+    - [ ] Espero confirmación: "✅ VPN activada y conectada correctamente"
+    - [ ] Si falla, revisar: ¿Puedo conectar VPN desde GUI en la Mac?
+      - Si GUI funciona pero línea de comandos falla → problema de Keychain
+      - Solución: Elimina y reconfigura VPN en (Sistema → Red → VPN)
   
   - [ ] **Validación 2.2b: Túnel SSH activo**
     - [ ] Ejecuto: `./scripts/geca_prod.sh status`

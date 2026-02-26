@@ -52,7 +52,7 @@ case "${1:-help}" in
         echo ""
         
         echo "   1️⃣  Activando VPN '$VPN_NAME' en Mac $MAC_HOST..."
-        ssh_mac "scutil --nc start '$VPN_NAME'"
+        ssh_mac "networksetup -connectpppoeservice '$VPN_NAME'"
         
         if [ $? -eq 0 ]; then
             echo "   ⏳ Esperando estabilización de conexión VPN (10s)..."
@@ -68,11 +68,11 @@ case "${1:-help}" in
                 echo "   📋 Estado: $VPN_FINAL_STATUS"
                 echo ""
                 echo "   Causas comunes:"
-                echo "   • Falta secreto compartido IPSec"
+                echo "   • Falta secreto compartido IPSec en Keychain"
                 echo "   • Configuración VPN inválida en la Mac"
                 echo "   • Problemas de red en la Mac"
                 echo ""
-                echo "   Acción: Revisa la configuración VPN en la Mac (Sistema → Red → VPN)"
+                echo "   Acción: Verifica que puedes conectar VPN desde GUI (icono barra)"
                 exit 1
             fi
             
@@ -149,7 +149,7 @@ case "${1:-help}" in
         echo "   2️⃣  Desactivando VPN '$VPN_NAME' en Mac..."
         VPN_CURRENT_STATUS=$(ssh_mac "scutil --nc status '$VPN_NAME'" | head -1)
         if [[ "$VPN_CURRENT_STATUS" == *"Connected"* ]]; then
-            ssh_mac "scutil --nc stop '$VPN_NAME'"
+            ssh_mac "networksetup -disconnectpppoeservice '$VPN_NAME'"
             sleep 3
             VPN_NEW_STATUS=$(ssh_mac "scutil --nc status '$VPN_NAME'" | head -1)
             if [[ "$VPN_NEW_STATUS" == *"Disconnected"* ]]; then
