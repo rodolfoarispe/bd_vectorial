@@ -1,6 +1,21 @@
 # Análisis de Facturas por Job en Sage/Peachtree (temp_sage_*)
 
+**ACTUALIZACIÓN FINAL:** ✅ Vista `vi_sage_jobs_facturas` IMPLEMENTADA EN PRODUCCIÓN (Feb 25, 2026)
+
 Este documento explica cómo extraer información de facturas agrupadas por job del sistema Sage/Peachtree, incluyendo el estado de pago y la clasificación entre ingresos y gastos.
+
+## 🎯 SOLUCIÓN FINAL IMPLEMENTADA
+
+**Vista:** `vi_sage_jobs_facturas`  
+**Estado:** ✅ EN PRODUCCIÓN  
+**Validación:** 100% match con `vi_sage_profit`  
+
+Ver documentación completa en: `data/solucion_vi_sage_jobs_facturas.md`
+
+### Problema Resuelto
+- ✅ **Data inconsistency** entre headers y cálculos de ingresos/gastos
+- ✅ **Header duplication** cuando se agrupa por factura
+- ✅ **Reconciliación completa** job → facturas → entidades
 
 ## Contexto del problema
 
