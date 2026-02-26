@@ -52,9 +52,10 @@ case "${1:-help}" in
         echo ""
         
         echo "   1️⃣  Activando VPN '$VPN_NAME' en Mac $MAC_HOST..."
-        ssh_mac "networksetup -connectpppoeservice '$VPN_NAME'"
+        VPN_OUTPUT=$(ssh_mac "networksetup -connectpppoeservice '$VPN_NAME'" 2>&1)
+        VPN_RESULT=$?
         
-        if [ $? -eq 0 ]; then
+        if [ $VPN_RESULT -eq 0 ]; then
             echo "   ⏳ Esperando estabilización de conexión VPN (10s)..."
             sleep 10
             
@@ -120,7 +121,23 @@ case "${1:-help}" in
                 exit 1
             fi
         else
-            echo "❌ Error al activar VPN"
+            echo "   ❌ Error al activar VPN"
+            echo ""
+            echo "   Detalles del error:"
+            echo "$VPN_OUTPUT"
+            echo ""
+            echo "   Causas posibles:"
+            echo "   • La Mac no tiene conectividad"
+            echo "   • networksetup no está disponible"
+            echo "   • Problema de SSH a la Mac"
+            echo ""
+            echo "   Verifica:"
+            echo "   1. ¿Puedo conectar a Mac por SSH?"
+            echo "      ssh rodolfoarispe@192.168.0.229 'echo OK'"
+            echo "   2. ¿Puedo conectar VPN desde GUI en la Mac?"
+            echo "      (Click en icono VPN en barra)"
+            echo "   3. ¿Existe networksetup?"
+            echo "      ssh rodolfoarispe@192.168.0.229 'which networksetup'"
             exit 1
         fi
         ;;
