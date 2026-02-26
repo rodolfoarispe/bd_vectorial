@@ -55,9 +55,26 @@ case "${1:-help}" in
         ssh_mac "scutil --nc start '$VPN_NAME'"
         
         if [ $? -eq 0 ]; then
-            echo "   ✅ VPN activada correctamente"
             echo "   ⏳ Esperando estabilización de conexión VPN (10s)..."
             sleep 10
+            
+            # VALIDACIÓN CRÍTICA: Verificar que VPN está REALMENTE conectada
+            echo "   🔍 Verificando estado REAL de VPN..."
+            VPN_FINAL_STATUS=$(ssh_mac "scutil --nc status '$VPN_NAME'" | head -1)
+            if [[ "$VPN_FINAL_STATUS" == *"Connected"* ]]; then
+                echo "   ✅ VPN activada y conectada correctamente: $VPN_FINAL_STATUS"
+            else
+                echo "   ❌ ERROR: VPN no está realmente conectada"
+                echo "   📋 Estado: $VPN_FINAL_STATUS"
+                echo ""
+                echo "   Causas comunes:"
+                echo "   • Falta secreto compartido IPSec"
+                echo "   • Configuración VPN inválida en la Mac"
+                echo "   • Problemas de red en la Mac"
+                echo ""
+                echo "   Acción: Revisa la configuración VPN en la Mac (Sistema → Red → VPN)"
+                exit 1
+            fi
             
             # Verificar si el túnel ya existe
             if lsof -i :$TUNNEL_PORT >/dev/null 2>&1; then
@@ -71,17 +88,35 @@ case "${1:-help}" in
             
             sleep 3
             if lsof -i :$TUNNEL_PORT >/dev/null 2>&1; then
-                echo ""
-                echo "🎉 ¡CONEXIÓN ESTABLECIDA!"
-                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                echo "🌐 GECA Producción disponible en: localhost:$TUNNEL_PORT"
-                echo "👤 Usuario BD: analitica"
-                echo "🔑 Password BD: biuser20!"
-                echo "💾 Base de datos: analitica"
-                echo ""
-                echo "📝 Para desconectar ejecutar: $0 stop"
+                echo "   ✅ Túnel SSH establecido en puerto $TUNNEL_PORT"
+                
+                # VALIDACIÓN CRÍTICA: Verificar que el servidor está realmente alcanzable
+                echo "   🔍 Verificando conectividad a BD..."
+                sleep 2
+                if timeout 5 nc -zv localhost $TUNNEL_PORT >/dev/null 2>&1; then
+                    echo "   ✅ Servidor GECA es alcanzable en localhost:$TUNNEL_PORT"
+                    echo ""
+                    echo "🎉 ¡CONEXIÓN ESTABLECIDA CORRECTAMENTE!"
+                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                    echo "🌐 GECA Producción disponible en: localhost:$TUNNEL_PORT"
+                    echo "👤 Usuario BD: analitica"
+                    echo "🔑 Password BD: biuser20!"
+                    echo "💾 Base de datos: analitica"
+                    echo ""
+                    echo "📝 Para desconectar ejecutar: $0 stop"
+                else
+                    echo "   ⚠️  ADVERTENCIA: Túnel SSH existe pero BD no responde"
+                    echo "   Causas posibles:"
+                    echo "   • VPN en la Mac no está realmente conectada"
+                    echo "   • Falta secreto compartido IPSec"
+                    echo "   • Servidor GECA no está disponible"
+                    echo ""
+                    echo "   Verifica: $0 status"
+                    exit 1
+                fi
             else
-                echo "❌ Error al establecer túnel SSH"
+                echo "   ❌ Error al establecer túnel SSH"
+                echo "   Verifica credenciales SSH en la Mac"
                 exit 1
             fi
         else
@@ -132,15 +167,46 @@ case "${1:-help}" in
         ;;
         
     "status")
+        show_header
+        request_password
+        
+        echo "📊 ESTADO ACTUAL DE CONEXIÓN"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        
         # Estado VPN
-        VPN_STATUS=$(ssh_mac "scutil --nc status '$VPN_NAME'" | head -1)
-        echo "VPN Status: $VPN_STATUS"
+        echo "1️⃣  VPN Status en Mac ($MAC_HOST):"
+        VPN_STATUS=$(ssh_mac "scutil --nc status '$VPN_NAME'" 2>&1 | head -1)
+        if [[ "$VPN_STATUS" == *"Connected"* ]]; then
+            echo "    ✅ Conectada: $VPN_STATUS"
+        else
+            echo "    ❌ NO conectada: $VPN_STATUS"
+        fi
+        echo ""
         
         # Estado túnel
+        echo "2️⃣  Túnel SSH:"
         if lsof -i :$TUNNEL_PORT >/dev/null 2>&1; then
-            echo "Túnel SSH: ✅ Activo en puerto $TUNNEL_PORT"
+            echo "    ✅ Proceso SSH activo en puerto $TUNNEL_PORT"
+            
+            # Verificación adicional: ¿Realmente sirve?
+            if timeout 3 nc -zv localhost $TUNNEL_PORT >/dev/null 2>&1; then
+                echo "    ✅ Servidor GECA es alcanzable"
+            else
+                echo "    ❌ Puerto abierto pero servidor NO responde"
+            fi
         else
-            echo "Túnel SSH: ❌ Inactivo"
+            echo "    ❌ Inactivo"
+        fi
+        echo ""
+        
+        # Resumen
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        if [[ "$VPN_STATUS" == *"Connected"* ]] && lsof -i :$TUNNEL_PORT >/dev/null 2>&1; then
+            echo "✅ CONEXIÓN OPERATIVA"
+        else
+            echo "❌ CONEXIÓN INCOMPLETA O FALLIDA"
+            echo "   Ejecuta: $0 start (para reconectar)"
         fi
         ;;
         
