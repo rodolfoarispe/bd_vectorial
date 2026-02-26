@@ -212,13 +212,78 @@ GROUP BY j.jobid, j.jobdescription
 ORDER BY j.jobid;
 ```
 
+## Vista `vi_sage_jobs_facturas` - Estructura Final
+
+### Propósito
+Integrar información de facturas Sage/Peachtree con datos de jobs de Magaya, proporcionando un reporte completo de ingresos y gastos por proyecto con identificación de clientes/proveedores y estado de pago.
+
+### Campos disponibles (30 columnas)
+```sql
+SELECT 
+    company_name,                    -- Empresa (GENERAL CARGO, S.A., etc.)
+    jobid,                          -- ID del job/proyecto
+    jobdescription,                 -- Descripción del job
+    job_startdate,                  -- Fecha inicio del job
+    job_enddate,                    -- Fecha fin del job
+    job_supervisor,                 -- Supervisor del job
+    factura,                        -- Número de factura (reference o invnumforthistrx)
+    fecha_factura,                  -- Fecha de transacción
+    tipo_modulo,                    -- Tipo (R=Ingresos, P=Gastos)
+    descripcion_modulo,             -- Descripción módulo ("Receivables" o "Payables")
+    cliente_proveedor_nombre,       -- ⭐ NUEVO: Nombre del cliente (R) o proveedor (P)
+    cliente_proveedor_id,           -- ID del cliente (custvendid)
+    monto_factura,                  -- Monto de la factura
+    monto_pagado_parcial,           -- Monto pagado parcialmente
+    indicador_pago_total,           -- Indicador de pago completo
+    estado_pago,                    -- Estado: PENDIENTE, PAGADA, PARCIAL
+    ingresos,                       -- Monto como ingreso (módulo R)
+    gastos,                         -- Monto como gasto (módulo P)
+    descripcion_transaccion,        -- Descripción de la transacción
+    numero_transaccion,             -- Número de transacción
+    journal_id,                     -- ID de journal (jrnlkey_journal)
+    post_order,                     -- Post order (postorder)
+    descripcion_linea,              -- Descripción de la línea
+    monto_linea,                    -- Monto de la línea
+    cuenta_contable,                -- Número de cuenta contable
+    itemrecordnumber,               -- Record number del item
+    jobrecordnumber,                -- Record number del job
+    header_id,                      -- ID del header
+    row_id,                         -- ID de la fila
+    fecha_consulta                  -- Fecha de consulta
+```
+
+### Ejemplo de salida
+```
+GENERAL CARGO, S.A. | GCPAI19-2050 | GCII25-2833ZL | AVOCADO LOGISTICS | P (Gastos) | -2100.0
+GENERAL CARGO, S.A. | GCPAI19-2050 | GCII25-2833ZL | HMM COMPANY LIMITED HYUNDAI | P (Gastos) | -1150.6
+```
+
+### Lógica de `cliente_proveedor_nombre` (⭐ NUEVA)
+```sql
+-- Para módulo R (Receivables - Ingresos):
+LEFT JOIN temp_sage_customers c ON h.custvendid = c.customerrecordnumber
+SELECT COALESCE(c.customer_bill_name, h.description, 'SIN_CLIENTE')
+
+-- Para módulo P (Payables - Gastos):
+LEFT JOIN temp_sage_vendors v ON h.custvendid = v.vendorrecordnumber
+SELECT COALESCE(v.name, h.description, 'SIN_PROVEEDOR')
+```
+
+### Validación de la vista
+- ✅ Ejecutada exitosamente en producción
+- ✅ Campos verificados: 30 columnas
+- ✅ Test con job GCPAI19-2050 (enero 2026): 5 registros retornados
+- ✅ Cliente/proveedor nombres poblados correctamente
+
 ## Limitaciones y consideraciones
 
 1. **Tipos de datos inconsistentes**: Requiere `CAST` para joins entre `recordnumber`
 2. **Esquema denormalizado**: Sin FKs formales, las relaciones se infieren
 3. **Estados de pago**: La lógica puede variar según la versión de Sage y configuración
 4. **Filtros de fecha**: Usar patrón cerrado-abierto (`>= inicio AND < fin`)
+5. **Cliente/Proveedor**: Puede ser NULL si no existe en tablas de referencias o si es una transacción interna
 
 ## Referencias
 - Ver `data/sage_schema_notes.md` para detalles del esquema general
+- Ver `data/analisis_numero_factura_sage.md` para análisis de campos de referencia
 - Documentación pública de Sage 50: https://dscorp.com/docs/sage-50-rest-server/sage-50-database-schemas/
