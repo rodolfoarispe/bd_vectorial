@@ -83,34 +83,63 @@ SELECT
 FROM ...
 ```
 
-## Recomendación Final
+## CONCLUSIÓN: Son Referencias Cruzadas, NO Duplicados
+
+### Hallazgo Clave
+
+Análisis de **cardinalidad** reveló que estos campos son **referencias cruzadas entre sistemas**, no duplicados o alternativas:
+
+#### Módulo R (Clientes):
+- `reference`: 54,782 valores únicos de 60,801 registros = **90.1% únicos**
+  - Cada factura a cliente tiene número único
+  - **Significado:** Número de factura emitida por GECA al cliente
+  
+- `invnumforthistrx`: 34,633 valores únicos de 421,286 registros = **8.2% únicos**
+  - Muchas líneas reutilizan el mismo valor
+  - **Significado:** Referencia cruzada a documento del cliente (PO, embarque, etc.)
+
+#### Módulo P (Proveedores):
+- `reference`: 115,783 valores únicos de 218,054 registros = **53.1% únicos**
+  - Bastantes valores únicos (facturas de distintos proveedores)
+  - **Significado:** Número de factura del proveedor (documento recibido)
+  
+- `invnumforthistrx`: 49,766 valores únicos de 436,178 registros = **11.4% únicos**
+  - Muy pocos valores únicos (se reutilizan)
+  - **Significado:** Referencia cruzada interna de GECA (PO generada, acta, etc.)
+
+### Por qué "Casi siempre ambos están llenos"
+
+Porque **son campos complementarios, no alternativos**:
+- SIEMPRE hay referencia principal (factura o documento)
+- SIEMPRE hay referencia cruzada (documento relacionado en otra parte del sistema)
+- No hay confusión porque cumplen propósitos diferentes
+
+## Recomendación Final (IMPLEMENTADA)
 
 **Para `vi_sage_jobs_facturas`:**
 
-Mantener solo:
 ```sql
-COALESCE(h.reference, r.invnumforthistrx, 'SIN_FACTURA') AS factura_numero
+COALESCE(h.reference, r.invnumforthistrx, 'SIN_FACTURA') AS factura
 ```
 
-Pero agregar campos adicionales para auditoría:
-```sql
-h.reference AS factura_ref_geca,
-r.invnumforthistrx AS factura_ref_proveedor,
-CASE 
-    WHEN h.reference <> r.invnumforthistrx THEN 'VERIFICAR'
-    ELSE 'OK'
-END AS flag_validacion_factura
-```
+**Justificación:**
+1. `customerinvoiceno` se puede ignorar (prácticamente nunca se usa)
+2. Siempre hay al menos uno de los dos campos
+3. `reference` es el número de factura efectivo (prioridad)
+4. `invnumforthistrx` es fallback para casos raros donde `reference` esté vacío
+5. No hay ambigüedad: son referencias cruzadas, no alternativas
 
-Así los usuarios pueden:
-1. Ver el número "efectivo" de factura (COALESCE)
-2. Auditar si hay inconsistencias
-3. Investigar casos donde reference != invnumforthistrx
+**Cambios implementados:**
+- ✅ Eliminado `customerinvoiceno` del COALESCE
+- ✅ Mantenido orden: `reference` → `invnumforthistrx` → 'SIN_FACTURA'
+- ✅ Agregado campo `company_name` al inicio de la vista
+- ✅ Vista `vi_sage_jobs_facturas` actualizada en producción
 
 ## Notas técnicas
 
-- `customerinvoiceno` se puede ignorar (solo 157 registros de 927,318)
-- Para Módulo P: En 51% de casos `reference` ≠ `invnumforthistrx`
-- Para Módulo R: En 24% de casos `reference` ≠ `invnumforthistrx`
-- No se recomienda asumir orden de prioridad sin verificar contexto del usuario
+- **`customerinvoiceno`**: 157 de 927,318 registros (0.02%) - prácticamente inútil
+- **Diferencias semánticas son ESPERADAS**: 51% en P, 24% en R (propósito diferente de cada campo)
+- **Cobertura prácticamente completa**: ~99.99% en ambos campos combinados
+- **Referencias cruzadas**: Son el sistema de GECA para vincular documentos entre módulos R y P
+- **Orden de prioridad**: `reference` es el documento principal (factura emitida/recibida)
 

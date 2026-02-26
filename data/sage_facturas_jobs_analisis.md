@@ -26,10 +26,10 @@ El objetivo es obtener un reporte que muestre:
   - `'R'` = Receivables (Cuentas por Cobrar) → **FACTURAS A CLIENTES** → Ingresos
   - `'P'` = Payables (Cuentas por Pagar) → **FACTURAS DE PROVEEDORES** → Gastos
 
-- **Identificación de facturas**:
-  - `reference`: Número de factura (principalmente módulo R)
-  - `customerinvoiceno`: Número de factura del proveedor (principalmente módulo P)
-  - `invnumforthistrx` (en journal_row): Número de factura en líneas de detalle
+- **Identificación de facturas** (referencias cruzadas):
+  - `reference`: Número de factura (documento principal - módulo R cliente, P proveedor)
+  - `invnumforthistrx` (en journal_row): Referencia cruzada relacionada (PO, embarque, etc.)
+  - ⚠️ `customerinvoiceno`: Casi nunca se usa (0.02%) - ignorar en nuevas queries
 
 - **Montos**:
   - `mainamount`: Monto principal de la transacción
@@ -134,7 +134,7 @@ END AS gastos
 SELECT 
     j.jobid,
     j.jobdescription,
-    COALESCE(h.reference, h.customerinvoiceno, r.invnumforthistrx, 'SIN_FACTURA') AS factura,
+    COALESCE(h.reference, r.invnumforthistrx, 'SIN_FACTURA') AS factura,
     h.transactiondate AS fecha_factura,
     h.module,
     h.mainamount AS monto_factura,
@@ -170,6 +170,11 @@ ORDER BY
     h.transactiondate DESC,
     h.id;
 ```
+
+**Nota sobre COALESCE actualizado:**
+- Se eliminó `customerinvoiceno` (casi nunca se usa, 0.02% de registros)
+- Orden: `reference` (documento principal) → `invnumforthistrx` (referencia cruzada)
+- Ver `data/analisis_numero_factura_sage.md` para detalles sobre referencias cruzadas
 
 ## Validaciones realizadas
 
