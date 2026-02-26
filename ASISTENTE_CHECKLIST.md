@@ -41,13 +41,24 @@ Este documento define el orden EXACTO que debe seguir el asistente antes de ejec
   - [ ] ¿Desarrollo o producción? Especificar: ___________
   - [ ] ¿Colección a usar? `-c proyectos` o `-c proyectos_prod`
 
-- [ ] **Paso 2.2:** Si es PRODUCCIÓN, verifico conexión
-  - [ ] ¿El usuario ejecutó `./scripts/geca_prod.sh start`? 
-    - [ ] SÍ → Continuar
-    - [ ] NO → Recordar al usuario y esperar
-  - [ ] Ejecuto: `./scripts/geca_prod.sh status`
-    - [ ] ¿Muestra "OK"? → Continuar
-    - [ ] ¿Muestra error? → NO continuar sin fijar
+- [ ] **Paso 2.2:** Si es PRODUCCIÓN, verifico conexión (3 validaciones)
+  - [ ] **Validación 2.2a: VPN activa en la Mac**
+    - [ ] Ejecuto: `ssh rodolfoarispe@192.168.0.229 "scutil --nc status 'VPN'"`
+    - [ ] ¿Muestra "Connected"? → Continuar
+    - [ ] ¿Muestra "Disconnected" o error de IPSec? → **PARAR AQUÍ** - La VPN NO está funcionando correctamente
+      - Error típico: "falta secreto compartido IPSec"
+      - Esto significa: La Mac NO puede alcanzar 192.168.1.11
+      - Solución: Usuario debe revisar configuración VPN en Mac
+  
+  - [ ] **Validación 2.2b: Túnel SSH activo**
+    - [ ] Ejecuto: `./scripts/geca_prod.sh status`
+    - [ ] ¿Muestra "Túnel SSH: ✅ Activo"? → Continuar
+    - [ ] ¿Muestra "Túnel SSH: ❌ Inactivo"? → Ejecutar `./scripts/geca_prod.sh start`
+  
+  - [ ] **Validación 2.2c: Puerto 1414 accesible**
+    - [ ] Ejecuto: `nc -zv localhost 1414`
+    - [ ] ¿Conecta? → Continuar
+    - [ ] ¿No conecta? → PARAR - Revisar: ¿VPN OK? ¿Túnel OK?
 
 - [ ] **Paso 2.3:** Identifico TABLA/VISTA necesaria
   - [ ] ¿Está documentada? Especificar: ___________
