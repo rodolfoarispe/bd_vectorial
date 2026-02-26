@@ -8,6 +8,13 @@ Sistema híbrido para análisis de datos de GECA: búsqueda semántica (ChromaDB
 **Leer primero al comenzar una sesión nueva.**
 Contiene el flujo de trabajo completo para construir consultas SQL: jerarquía de búsqueda (caché → vectorial → BD), reglas obligatorias (nunca asumir nombres de campos), protocolo de seguridad para producción, descripción de los dos sistemas (Magaya y Sage), y referencia a todos los archivos del proyecto.
 
+### DDL_EXECUTOR.md — Operaciones DDL seguras
+Consultar cuando el usuario pida **modificar la estructura** de la base de datos (crear/alterar/eliminar vistas o tablas).
+- Herramienta segura con confirmación explícita
+- Solo se invoca cuando el usuario lo pide
+- Auditoría completa de operaciones
+- Protecciones contra operaciones peligrosas
+
 ### GUIA.md — Documentación técnica del sistema vectorial
 Consultar cuando necesites entender o modificar la arquitectura del sistema (ChromaDB, Ollama, colecciones).
 - Comandos CLI (`main.py index`, `search`, `schema`, `stats`)

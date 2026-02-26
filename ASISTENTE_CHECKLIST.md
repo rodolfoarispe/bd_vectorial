@@ -127,6 +127,48 @@ Este documento define el orden EXACTO que debe seguir el asistente antes de ejec
 
 ---
 
+## Checklist: Operaciones DDL (Modificar Estructura)
+
+### ✅ Cuando usuario pide "Agrega este campo a la vista" o similar
+
+**IMPORTANTE:** Operaciones DDL SOLO se ejecutan con confirmación explícita.
+
+- [ ] Identifico la operación: ¿ALTER VIEW? ¿CREATE VIEW? ¿ALTER TABLE?
+- [ ] Leo DDL_EXECUTOR.md (cómo funciona y limitaciones)
+- [ ] Construyo el SQL completo basado en:
+  - [ ] Esquema actual de la vista/tabla
+  - [ ] Lo que el usuario pide modificar
+  - [ ] Mantener compatibilidad con resto del sistema
+- [ ] Presento al usuario:
+  - [ ] El SQL completo que se ejecutará
+  - [ ] Qué cambios hará
+  - [ ] Impacto potencial en otras vistas/queries
+- [ ] Espero confirmación explícita del usuario: "Adelante, hazlo"
+- [ ] SOLO ENTONCES ejecuto:
+  ```bash
+  /home/rodolfoarispe/vEnv/mem0/bin/python ddl_executor.py -c proyectos_prod --sql "..."
+  ```
+- [ ] El usuario verá pantalla de confirmación que pide escribir CONFIRMO
+- [ ] Reporte resultado: ✅ exitoso o ❌ error con detalles
+
+### ⚠️ RESTRICCIONES de DDL Executor:
+
+✅ Permitidas:
+- ALTER VIEW
+- CREATE VIEW
+- DROP VIEW
+- ALTER TABLE
+- CREATE TABLE
+
+❌ Prohibidas (por seguridad):
+- DROP DATABASE
+- TRUNCATE
+- DELETE FROM
+- INSERT INTO
+- UPDATE
+
+---
+
 ## Errores Comunes y Cómo Prevenirlos
 
 | Error | Causa | Prevención |
