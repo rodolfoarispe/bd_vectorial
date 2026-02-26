@@ -1,5 +1,15 @@
 # Conexión a GECA Producción
 
+## ⚠️ ESTADO ACTUAL: VPN NO FUNCIONA
+
+**Problema identificado:** El script no puede levantar la VPN en la Mac.
+
+**Causa probable:** El usuario `rodolfoarispe` NO tiene permisos de administrador para ejecutar `scutil --nc start` en la Mac.
+
+**Requerimiento:** Necesitas un usuario CON permisos de administrador en la Mac `192.168.0.229` para poder levantar la VPN.
+
+---
+
 ## Configuración Verificada
 
 ### Servidor Producción GECA
@@ -11,12 +21,54 @@
 
 ### Credenciales Mac (SSH)
 - **Host:** `192.168.0.229`
-- **Usuario:** `rodolfoarispe`
+- **Usuario:** `rodolfoarispe` ⚠️ **PROBLEMA: No tiene permisos admin**
 - **Password:** `Bichito21$` (se solicita interactivamente)
+
+## Requisitos Previos - Configuración en la Mac
+
+### Problema: Usuario sin permisos de administrador
+
+Para que el script pueda activar la VPN, el usuario en la Mac DEBE tener permisos de administrador.
+
+**¿Cómo verificar en la Mac?**
+
+```bash
+# Ejecutar en terminal de la Mac:
+sudo scutil --nc list
+
+# Si pide contraseña y la acepta → TIENE permisos ✓
+# Si dice "Operation not permitted" → NO TIENE permisos ✗
+```
+
+**¿Cómo arreglarlo en la Mac?**
+
+```bash
+# Opción 1: Agregar usuario a grupo admin
+sudo dseditgroup -o edit -a rodolfoarispe -t user admin
+
+# Opción 2: Permitir sudoers sin contraseña (menos seguro)
+sudo visudo
+# Agregar línea: rodolfoarispe ALL=(ALL) NOPASSWD: /usr/bin/scutil
+```
+
+**Alternativa: Ejecutar manualmente en la Mac**
+
+Si no puedes cambiar permisos, usa este script directamente en la Mac:
+
+```bash
+# En la Mac (192.168.0.229):
+sudo scutil --nc start "VPN"
+sudo scutil --nc status "VPN"
+
+# Verificar
+sudo scutil --nc list  # Debe mostrar "VPN" en estado "Connected"
+```
+
+---
 
 ## Proceso de Conexión
 
-### Automático (Recomendado)
+### Automático (Recomendado) - REQUIERE permisos en la Mac
 ```bash
 # Activar VPN + establecer túnel (pedirá contraseña interactivamente)
 ./scripts/geca_prod.sh start
